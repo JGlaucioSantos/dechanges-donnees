@@ -1,0 +1,19 @@
+<div class="container my-5">
+    {% if not check_auth %}
+    <div class="container my-5">
+        <h1 class="text-center mt-5">Gláucio System</h1>
+        <img src="{{ url_for('statics', path='/img/image.png') }}" class="img-fluid" alt="Image">
+        <p class="text-center mt-5">The Gláucio System is a comprehensive solution for managing and organizing data. With its user-friendly interface and powerful features, the Gláucio System streamlines processes and helps improve productivity. </p>
+      </div>   
+    {% else %}
+    <div class="container my-5">
+        <h1 class="text-center mt-5">Gláucio System</h1>
+        <img src="{{ url_for('statics', path='/img/image_logged.png') }}" class="img-fluid" alt="Image">
+        <p class="text-center mt-5">The Gláucio System is a comprehensive solution for managing and organizing data. With its user-friendly interface and powerful features, the Gláucio System streamlines processes and helps improve productivity. </p>
+      </div> 
+    {% endif %}
+    </div>
+
+
+    
+      

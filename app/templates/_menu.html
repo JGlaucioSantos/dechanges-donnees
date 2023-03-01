@@ -1,0 +1,25 @@
+<nav class="navbar sticky-top navbar-expand-md navbar-light">
+    <!-- Brand -->
+    <a class="navbar-brand" href="{{ url_for('index') }}"><img src="{{ url_for('statics', path='/img/logo.png') }}" width="80"alt="System Gláucio"></a>
+    <!-- Toggler/collapsibe Button -->
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+    <span class="navbar-toggler-icon"></span>
+    </button>
+    <!-- Navbar links -->
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+    <ul class="navbar-nav">
+        <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+        </li>
+        {% if not check_auth %}
+            <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+            </li>
+        {% else %}
+            <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </li>
+        {% endif %}
+    </ul>
+    </div>
+</nav>
