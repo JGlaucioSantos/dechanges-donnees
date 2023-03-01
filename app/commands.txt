@@ -1,0 +1,22 @@
+
+1º passo
+
+Criar projeto
+
+2º passo criar o arquivo do projeto
+
+app.py
+
+3º atualizar pip
+
+pip install -U pip setuptools wheel
+
+4º Instalar requests
+
+pip install requests
+
+5º criar arquiv requiments.txt
+
+pip install -r requiments.txt
+
+6º 

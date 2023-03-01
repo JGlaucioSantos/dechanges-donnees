@@ -1,94 +1,180 @@
+#!/home/renato/python/projeto-glaucio/.venv/bin/python3
 
-from datetime import datetime
+import os
 
-from fastapi import FastAPI, Response
-from fastapi.requests import Request
-from fastapi.staticfiles import StaticFiles
+import requests
+import pandas as pd
+from sqlalchemy import create_engine
 
-from settings.configs import  config
-from settings.authentication import Auth, Encryption, AllowsAccess
+from dotenv import load_dotenv
 
-from error import exception_handlers
+load_dotenv()
 
-app = FastAPI(docs_url=None, redoc_url=None, exception_handlers=exception_handlers)
-app.mount("/statics", StaticFiles(directory="statics"), name="statics")
-year: str = datetime.now().strftime("%Y")
+# Retrieving data from the API
 
+url_api = "https://my.api.mockaroo.com/open_job_posting_report.json?key=86a393a0"
 
-@app.get("/", name="index")
-async def index(request: Request, response: Response):
-    
-    context: dict = {
-        "check_auth": Auth.exists_auth(request),
-        "year": year,
-        "request": request
-    }
+try:
+    req = requests.get(url_api, timeout=5)
 
-    response = config.TEMPLATES.TemplateResponse("index.html", context=context)
-    return response
+    if req.status_code == 200:
+        # request made successfully
+        data = req.json()
 
-@app.post("/", name="index")
-async def index(request: Request, response: Response):
-    context: dict = {
-                "check_auth": Auth.exists_auth(request),
-                "year": year,
-                "request": request
-            }
-    form = await request.form()
-    
-    if form.get("password", None) and form.get("email", None):
-        password: str =  Encryption.encryption_password(form.get("password"))
-        email: str = form.get("email", None)
-
-        if AllowsAccess.allows_access(email, password):
-            response = config.TEMPLATES.TemplateResponse("index.html", context=context)
-            Auth.apply_auth(request, response)
-            return response
-        
-        else:
-            response = config.TEMPLATES.TemplateResponse("login.html", context=context)
-            return response
-    
-    elif form.get("logout", None):
-        response = config.TEMPLATES.TemplateResponse("index.html", context=context)
-        Auth.remove_auth(request, response)
-        return response
-    
     else:
-        response = config.TEMPLATES.TemplateResponse("login.html", context=context)
-        return response
+        erro = req.raise_for_status()
+        print(f"The following error occurred while accessing the API: {erro}")
 
-@app.get("/login", name="login")
-async def index(request: Request, response: Response):
+except Exception as erro:
+    print(f"The following error occurred in the request: {erro}")
 
-    context: dict = {
-        "check_auth": Auth.exists_auth(request),
-        "year": year,
-        "request": request
-    }
+# Structuring retrieved data
 
-    response = config.TEMPLATES.TemplateResponse("login.html", context=context)
-    return response
+dataframe_offer_job = pd.DataFrame(data)
 
-@app.get("/logout", name="logout")
-async def index(request: Request, response: Response):
+## data segmentation
 
-    context: dict = {
-        "check_auth": Auth.exists_auth(request),
-        "year": year,
-        "request": request
-    }
+#candidate_identification
+dataframe_candidate_identification = (
+    dataframe_offer_job[
+        [
+            "id_candidate",
+            "candidate_first_name",
+            "candidate_last_name",
+            "gender"
+        ]
+    ]
+)
 
-    response = config.TEMPLATES.TemplateResponse("logout.html", context=context)
-    return response
+#candidate_contact
+dataframe_candidate_contact = (
+    dataframe_offer_job[
+        [
+            "id_candidate",
+            "candidate_email",
+            "phone_number"
+        ]
+    ]
+)
 
-if __name__ == "__main__":
-    import uvicorn
+#candidate_location
+dataframe_candidate_location = (
+    dataframe_offer_job[
+        [
+            "id_candidate",
+            "candidate_address",
+            "postal_code",
+            "city",
+            "country",
+            "code_country"
+        ]
+    ]
+)
 
-    uvicorn.run(
-        app="app:app",
-        host="0.0.0.0",
-        port=8080,
-        log_level="info",
-        reload=True
+#job_information
+dataframe_job_information = (
+    dataframe_offer_job[
+    [
+        "id_candidate",
+        "department",
+        "job_title",
+        "annual_salary"
+        ]
+    ]
+)
+
+#hiring_process
+dataframe_hiring_process = (
+    dataframe_offer_job
+    [
+        [
+            "id_candidate",
+            "position_type",
+            "position_status",
+            "poste_date",
+            "hired_Date"
+        ]
+    ]
+)
+
+## database connection
+
+user = os.getenv("MYSQL_USER")
+password = os.getenv("MYSQL_PASS")
+host = os.getenv("MYSQL_HOST")
+port = os.getenv("MYSQL_PORT")
+database = os.getenv("MYSQL_DB")
+
+try:
+    db_connection = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
+    db_connection = create_engine(db_connection)
+
+except Exception as erro:
+    print(f"The following error occurred while creating the database connection:{erro}")
+
+## write to the database
+
+#candidate_identification
+try:
+    dataframe_candidate_identification.to_sql(
+        con=db_connection,
+        name="candidate_identification",
+        if_exists="replace", #"append"
+        index=False,
+        chunksize=100
     )
+
+except Exception as erro:
+    print(f"An error occurred while writing table candidate_identification:{erro}")
+
+#candidate_contact
+try:
+    dataframe_candidate_contact.to_sql(
+        con=db_connection,
+        name="candidate_contact",
+        if_exists="replace", #"append"
+        index=False,
+        chunksize=100
+    )
+
+except Exception as erro:
+    print(f"An error occurred while writing table candidate_contact:{erro}")
+
+#candidate_location
+try:
+    dataframe_candidate_location.to_sql(
+        con=db_connection,
+        name="candidate_location",
+        if_exists="replace", #"append"
+        index=False,
+        chunksize=100
+    )
+
+except Exception as erro:
+    print(f"An error occurred while writing table candidate_location:{erro}")
+
+#job_information
+try:
+    dataframe_job_information.to_sql(
+        con=db_connection,
+        name="job_information",
+        if_exists="replace", #"append"
+        index=False,
+        chunksize=100
+    )
+
+except Exception as erro:
+    print(f"An error occurred while writing table job_information:{erro}")
+
+#hiring_process
+try:
+    dataframe_hiring_process.to_sql(
+        con=db_connection,
+        name="hiring_process",
+        if_exists="replace", #"append"
+        index=False,
+        chunksize=100
+    )
+
+except Exception as erro:
+    print(f"An error occurred while writing table hiring_process:{erro}")
